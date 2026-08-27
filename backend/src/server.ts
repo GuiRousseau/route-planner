@@ -1,13 +1,7 @@
-import express, { type Request, type Response } from 'express';
+import { createApp } from './infrastructure/create-app.ts';
 
-const app = express();
+const app = createApp();
 const PORT = 3000;
-
-app.use(express.json());
-
-app.post('/route', (req: Request, res: Response) => {
-  res.json({ message: 'Route endpoint received' });
-});
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
