@@ -1,7 +1,7 @@
 # TypeScript Coder Agent Configuration
 
 ## Identity
-- **Name**: typescript-coder
+- **Name**: react-coder
 - **Version**: 1.0.0
 - **Type**: Developer
 - **Language**: TypeScript
