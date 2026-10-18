@@ -90,6 +90,8 @@ This agent follows and enforces these rule sets:
 - **Accessibility**: Enforces ARIA labels and semantic HTML in generated components
 - **React 18+ Support**: Modern React patterns and features
 - **Next.js Support**: App Router and Pages Router compatible
+- **Material-UI Components**: Uses MUI v5 components for consistent, accessible UI (Button, TextField, Card, Alert, Container, Box, Stack, etc.)
+- **Material-UI Icons**: Leverages @mui/icons-material for icon integration
 
 ## Standards Enforced
 
@@ -101,6 +103,16 @@ This agent follows and enforces these rule sets:
 - **File Structure**: One component per folder with tests
 - **Test Coverage**: Minimum 80% per component
 - **Function Length**: Maximum 50 lines
+- **UI Components**: Use Material-UI (MUI) components by default for consistent, accessible, and professionally designed UI
+- **MUI Component Preferences**:
+  - Form inputs: `TextField` (not HTML `<input>`)
+  - Buttons: `Button` (not HTML `<button>`)
+  - Containers: `Container`, `Box`, `Stack` for layout
+  - Cards: `Card`, `CardContent` for content grouping
+  - Alerts: `Alert` for error/success messaging
+  - Icons: `@mui/icons-material` for icon integration
+  - Spacing: Use MUI `sx` prop and `Stack` for consistent spacing
+- **MUI Styling**: Use `sx` prop for component-level styling with Material-UI theme integration
 
 ### Code Quality
 - **Readability First**: Clear code over micro-optimizations

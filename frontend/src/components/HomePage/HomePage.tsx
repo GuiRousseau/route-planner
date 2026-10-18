@@ -1,4 +1,17 @@
 import { useState } from 'react';
+import {
+  Container,
+  TextField,
+  Button,
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Alert,
+  CircularProgress,
+  Stack,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 
 interface Location {
   lat: number;
@@ -42,59 +55,67 @@ export function HomePage() {
   };
 
   return (
-    <main style={{ fontFamily: 'sans-serif', padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
-      <h1>Route Planner</h1>
-      <form onSubmit={handleSearch} style={{ marginBottom: '2rem' }}>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter address or location..."
-          data-testid="address-input"
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            boxSizing: 'border-box',
-            marginBottom: '0.5rem',
-          }}
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          data-testid="search-button"
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? 'Searching...' : 'Search Location'}
-        </button>
-      </form>
+    <Container maxWidth="sm">
+      <Box sx={{ py: 4 }}>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ mb: 4, textAlign: 'center' }}>
+          Route Planner
+        </Typography>
 
-      {error && (
-        <p style={{ color: 'red', marginBottom: '1rem' }} data-testid="error-message">
-          {error}
-        </p>
-      )}
+        <form onSubmit={handleSearch}>
+          <Stack spacing={2}>
+            <TextField
+              fullWidth
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Enter address or location..."
+              data-testid="address-input"
+              variant="outlined"
+              disabled={loading}
+            />
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              disabled={loading}
+              data-testid="search-button"
+              startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
+            >
+              {loading ? 'Searching...' : 'Search Location'}
+            </Button>
+          </Stack>
+        </form>
 
-      {location && (
-        <div style={{ padding: '1rem', backgroundColor: '#f0f0f0', borderRadius: '4px' }} data-testid="location-result">
-          <h2>Location Found</h2>
-          <p>
-            <strong>Address:</strong> {location.display_name}
-          </p>
-          <p>
-            <strong>Latitude:</strong> {location.lat.toFixed(6)}
-          </p>
-          <p>
-            <strong>Longitude:</strong> {location.lon.toFixed(6)}
-          </p>
-        </div>
-      )}
-    </main>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }} data-testid="error-message">
+            {error}
+          </Alert>
+        )}
+
+        {location && (
+          <Card sx={{ mt: 4 }} data-testid="location-result">
+            <CardContent>
+              <Typography variant="h5" component="h2" gutterBottom>
+                Location Found
+              </Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2" color="textSecondary">
+                  <strong>Address:</strong> {location.display_name}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  <strong>Latitude:</strong> {location.lat.toFixed(6)}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  <strong>Longitude:</strong> {location.lon.toFixed(6)}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
+      </Box>
+    </Container>
   );
 }
+

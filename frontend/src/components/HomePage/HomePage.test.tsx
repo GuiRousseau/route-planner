@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HomePage } from './HomePage';
 
 describe('HomePage', () => {
@@ -17,10 +18,11 @@ describe('HomePage', () => {
     expect(screen.getByTestId('search-button')).toBeInTheDocument();
   });
 
-  it('updates input value when user types', () => {
+  it('updates input value when user types', async () => {
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'New York' } });
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
+    await user.type(input, 'New York');
     expect(input.value).toBe('New York');
   });
 
@@ -36,11 +38,12 @@ describe('HomePage', () => {
       json: async () => mockResponse,
     });
 
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
     const button = screen.getByTestId('search-button');
 
-    fireEvent.change(input, { target: { value: 'New York' } });
+    await user.type(input, 'New York');
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -56,11 +59,12 @@ describe('HomePage', () => {
       json: async () => [],
     });
 
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
     const button = screen.getByTestId('search-button');
 
-    fireEvent.change(input, { target: { value: 'XyzNotAPlace123' } });
+    await user.type(input, 'XyzNotAPlace123');
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -71,11 +75,12 @@ describe('HomePage', () => {
   it('displays error when API call fails', async () => {
     (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
     const button = screen.getByTestId('search-button');
 
-    fireEvent.change(input, { target: { value: 'New York' } });
+    await user.type(input, 'New York');
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -88,11 +93,12 @@ describe('HomePage', () => {
       () => new Promise((resolve) => setTimeout(() => resolve({ json: async () => [] }), 100))
     );
 
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
     const button = screen.getByTestId('search-button');
 
-    fireEvent.change(input, { target: { value: 'New York' } });
+    await user.type(input, 'New York');
     fireEvent.click(button);
 
     expect(button).toHaveTextContent('Searching...');
@@ -125,11 +131,12 @@ describe('HomePage', () => {
       json: async () => mockSuccessResponse,
     });
 
+    const user = userEvent.setup();
     render(<HomePage />);
-    const input = screen.getByTestId('address-input') as HTMLInputElement;
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
     const button = screen.getByTestId('search-button');
 
-    fireEvent.change(input, { target: { value: 'New York' } });
+    await user.type(input, 'New York');
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -140,7 +147,8 @@ describe('HomePage', () => {
       json: async () => [],
     });
 
-    fireEvent.change(input, { target: { value: 'XyzNotAPlace123' } });
+    await user.clear(input);
+    await user.type(input, 'XyzNotAPlace123');
     fireEvent.click(button);
 
     await waitFor(() => {
