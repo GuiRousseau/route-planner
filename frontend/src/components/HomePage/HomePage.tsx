@@ -4,16 +4,13 @@ import {
   TextField,
   Button,
   Box,
-  Card,
-  CardContent,
-  Typography,
   Alert,
   CircularProgress,
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import MapIcon from '@mui/icons-material/Map';
 import type { RouteRequest } from '../../../lib/route-dto';
+import { LocationResultCard } from './LocationResultCard';
 
 interface Location {
   lat: number;
@@ -85,7 +82,6 @@ export function HomePage() {
 
       const result = await response.json();
       console.log('Route generated:', result);
-      // Route generation successful, could navigate or display result here
     } catch (err) {
       setRouteError(err instanceof Error ? err.message : 'Failed to generate route');
     } finally {
@@ -96,10 +92,6 @@ export function HomePage() {
   return (
     <Container maxWidth="sm">
       <Box sx={{ py: 4 }}>
-        <Typography variant="h3" component="h1" gutterBottom sx={{ mb: 4, textAlign: 'center' }}>
-          Route Planner
-        </Typography>
-
         <form onSubmit={handleSearch}>
           <Stack spacing={2}>
             <TextField
@@ -134,37 +126,13 @@ export function HomePage() {
         )}
 
         {location && (
-          <Card sx={{ mt: 4 }} data-testid="location-result">
-            <CardContent>
-              <Typography variant="h5" component="h2" gutterBottom>
-                Location Found
-              </Typography>
-              <Stack spacing={1}>
-                <Typography variant="body2" color="textSecondary">
-                  <strong>Address:</strong> {location.display_name}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  <strong>Latitude:</strong> {location.lat.toFixed(6)}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  <strong>Longitude:</strong> {location.lon.toFixed(6)}
-                </Typography>
-              </Stack>
-              <Button
-                fullWidth
-                variant="contained"
-                color="success"
-                size="large"
-                disabled={generatingRoute}
-                data-testid="generate-route-button"
-                startIcon={generatingRoute ? <CircularProgress size={20} /> : <MapIcon />}
-                sx={{ mt: 2 }}
-                onClick={handleGenerateRoute}
-              >
-                {generatingRoute ? 'Generating Route...' : 'Generate Running Route'}
-              </Button>
-            </CardContent>
-          </Card>
+          <LocationResultCard
+            lat={location.lat}
+            lon={location.lon}
+            displayName={location.display_name}
+            onGenerateRoute={handleGenerateRoute}
+            loading={generatingRoute}
+          />
         )}
 
         {routeError && (

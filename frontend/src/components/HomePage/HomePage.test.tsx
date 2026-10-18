@@ -11,9 +11,8 @@ describe('HomePage', () => {
     jest.resetAllMocks();
   });
 
-  it('renders the home page with title and input', () => {
+  it('renders the home page with input and search button', () => {
     render(<HomePage />);
-    expect(screen.getByText('Route Planner')).toBeInTheDocument();
     expect(screen.getByTestId('address-input')).toBeInTheDocument();
     expect(screen.getByTestId('search-button')).toBeInTheDocument();
   });
@@ -223,7 +222,7 @@ describe('HomePage', () => {
     });
   });
 
-  it('does not submit when input is empty', () => {
+  it('does not submit when input is empty', async () => {
     render(<HomePage />);
     const button = screen.getByTestId('search-button');
 
