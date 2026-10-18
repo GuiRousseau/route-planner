@@ -25,6 +25,11 @@
   - Next.js (App Router preferred, Pages Router supported)
 - **TypeScript**: Always use TypeScript for new components
 - **Package Manager Context**: Pass detected package manager to all skills
+- **UI Library**: Use Material-UI (MUI) v5 for component development
+  - Install: `npm install @mui/material @emotion/react @emotion/styled @mui/icons-material`
+  - Use MUI components for inputs, buttons, cards, alerts, layout, and spacing
+  - Never use plain HTML elements (e.g., `<input>`, `<button>`) when MUI equivalents exist
+  - Leverage MUI `sx` prop for consistent styling with theme integration
 
 ## Component Creation Rules
 
