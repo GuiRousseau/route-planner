@@ -6,11 +6,6 @@ interface Location {
   display_name: string;
 }
 
-/**
- * HomePage component for address search and location lookup.
- * Allows users to enter a partial or complete address and retrieves
- * the exact location coordinates via OpenStreetMap Nominatim API.
- */
 export function HomePage() {
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<Location | null>(null);
