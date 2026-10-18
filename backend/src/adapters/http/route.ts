@@ -4,10 +4,7 @@ export function createRouteRouter(): Router {
   const router = Router();
 
   router.post('/route', (request: Request, response: Response) => {
-    if (
-      request.body !== undefined &&
-      (typeof request.body !== 'object' || request.body === null || Array.isArray(request.body))
-    ) {
+    if (!isValidRouteRequestBody(request.body)) {
       response.status(400).json({
         error: 'Request body must be a JSON object',
       });
@@ -18,4 +15,11 @@ export function createRouteRouter(): Router {
   });
 
   return router;
+}
+
+function isValidRouteRequestBody(body: unknown): boolean {
+  return (
+    body === undefined ||
+    (typeof body === 'object' && body !== null && !Array.isArray(body))
+  );
 }
