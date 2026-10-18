@@ -12,6 +12,8 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import MapIcon from '@mui/icons-material/Map';
+import type { RouteRequest } from '../../../lib/route-dto';
 
 interface Location {
   lat: number;
@@ -23,7 +25,9 @@ export function HomePage() {
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<Location | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generatingRoute, setGeneratingRoute] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +55,41 @@ export function HomePage() {
       setLocation(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateRoute = async () => {
+    if (!location) return;
+
+    setGeneratingRoute(true);
+    setRouteError(null);
+    try {
+      const request: RouteRequest = {
+        startPoint: {
+          lat: location.lat,
+          lon: location.lon,
+        },
+      };
+
+      const response = await fetch('/api/route', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Route generated:', result);
+      // Route generation successful, could navigate or display result here
+    } catch (err) {
+      setRouteError(err instanceof Error ? err.message : 'Failed to generate route');
+    } finally {
+      setGeneratingRoute(false);
     }
   };
 
@@ -111,11 +150,31 @@ export function HomePage() {
                   <strong>Longitude:</strong> {location.lon.toFixed(6)}
                 </Typography>
               </Stack>
+              <Button
+                fullWidth
+                variant="contained"
+                color="success"
+                size="large"
+                disabled={generatingRoute}
+                data-testid="generate-route-button"
+                startIcon={generatingRoute ? <CircularProgress size={20} /> : <MapIcon />}
+                sx={{ mt: 2 }}
+                onClick={handleGenerateRoute}
+              >
+                {generatingRoute ? 'Generating Route...' : 'Generate Running Route'}
+              </Button>
             </CardContent>
           </Card>
+        )}
+
+        {routeError && (
+          <Alert severity="error" sx={{ mt: 2 }} data-testid="route-error-message">
+            {routeError}
+          </Alert>
         )}
       </Box>
     </Container>
   );
 }
+
 

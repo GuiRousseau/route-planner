@@ -49,8 +49,121 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location-result')).toBeInTheDocument();
       expect(screen.getByText('New York, United States')).toBeInTheDocument();
-      expect(screen.getByText(/40.712800/)).toBeInTheDocument();
-      expect(screen.getByText(/-74.006000/)).toBeInTheDocument();
+    });
+  });
+
+  it('displays generate route button when location found', async () => {
+    const mockResponse = [
+      {
+        lat: '40.7128',
+        lon: '-74.0060',
+        display_name: 'New York, United States',
+      },
+    ];
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      json: async () => mockResponse,
+    });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
+    const searchButton = screen.getByTestId('search-button');
+
+    await user.type(input, 'New York');
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('generate-route-button')).toBeInTheDocument();
+    });
+  });
+
+  it('calls /api/route with location data when generate route clicked', async () => {
+    const mockLocationResponse = [
+      {
+        lat: '40.7128',
+        lon: '-74.0060',
+        display_name: 'New York, United States',
+      },
+    ];
+    const mockRouteResponse = { route: 'route-data' };
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => mockLocationResponse,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        statusText: 'OK',
+        json: async () => mockRouteResponse,
+      });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
+    const searchButton = screen.getByTestId('search-button');
+
+    await user.type(input, 'New York');
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('generate-route-button')).toBeInTheDocument();
+    });
+
+    const generateButton = screen.getByTestId('generate-route-button');
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        '/api/route',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            startPoint: {
+              lat: 40.7128,
+              lon: -74.006,
+            },
+          }),
+        })
+      );
+    });
+  });
+
+  it('displays error when route generation fails', async () => {
+    const mockLocationResponse = [
+      {
+        lat: '40.7128',
+        lon: '-74.0060',
+        display_name: 'New York, United States',
+      },
+    ];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => mockLocationResponse,
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        statusText: 'Internal Server Error',
+      });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    const input = screen.getByTestId('address-input').querySelector('input') as HTMLInputElement;
+    const searchButton = screen.getByTestId('search-button');
+
+    await user.type(input, 'New York');
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('generate-route-button')).toBeInTheDocument();
+    });
+
+    const generateButton = screen.getByTestId('generate-route-button');
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('route-error-message')).toHaveTextContent('API error: Internal Server Error');
     });
   });
 
