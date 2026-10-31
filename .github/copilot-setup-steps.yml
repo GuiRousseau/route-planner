@@ -1,8 +1,5 @@
 version: 1
 
-# Load project-specific agents, skills, and rules
-agents_path: .agents
-
 setup_steps:
   - name: Install dependencies
     command: npm install
