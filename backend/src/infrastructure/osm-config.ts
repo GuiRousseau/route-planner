@@ -9,7 +9,7 @@ const DEFAULT_BOUNDS: OsmBounds = {
 };
 
 const DEFAULT_OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
-const DEFAULT_MAP_DATA_FILE = 'data/quebec-city-osm.json';
+const DEFAULT_MAP_DATA_FILE = 'data/osm/quebec-city.json';
 
 export interface OsmConfig {
   overpassEndpoint: string;

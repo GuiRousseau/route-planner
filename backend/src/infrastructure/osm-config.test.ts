@@ -14,7 +14,7 @@ describe('loadOsmConfig', () => {
       north: 47.05,
       east: -70.75,
     });
-    expect(config.mapDataFile.endsWith('/data/quebec-city-osm.json')).toBe(true);
+    expect(config.mapDataFile.endsWith('/data/osm/quebec-city.json')).toBe(true);
   });
 
   it('allows the extraction bounds, endpoint, and storage file to be changed', () => {
