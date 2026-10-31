@@ -202,6 +202,37 @@ const hasSeenOnboarding = dayjs.tz(user.createdAt, user.timezone).isSame(
 
 ## React Component Patterns
 
+### Code Documentation
+
+**Rule: Only add JSDoc for complex, non-obvious components**
+
+Self-documenting code through clear naming is preferred. JSDoc comments are required only when:
+- Component behavior is non-obvious from its name and structure
+- Component has complex prop interactions or side effects
+- Exported utility functions need parameter/return documentation
+
+Do not add JSDoc for straightforward components where the name and implementation are self-explanatory.
+
+```typescript
+// ❌ Bad: Unnecessary JSDoc for obvious component
+/**
+ * HomePage component for address search and location lookup.
+ * Allows users to enter a partial or complete address and retrieves
+ * the exact location coordinates via OpenStreetMap Nominatim API.
+ */
+export function HomePage() { ... }
+
+// ✅ Good: Clear name, no unnecessary comment
+export function HomePage() { ... }
+
+// ✅ Good: JSDoc for complex, non-obvious behavior
+/**
+ * Debounced search that waits 300ms after user stops typing
+ * before making API call. Prevents excessive requests.
+ */
+export function useSearchWithDebounce(query: string) { ... }
+```
+
 ### Component File Structure
 
 ```typescript
