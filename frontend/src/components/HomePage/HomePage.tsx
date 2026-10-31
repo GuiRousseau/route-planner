@@ -9,7 +9,7 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import type { RouteRequest } from '../../../lib/route-dto';
+import type { RouteRequest } from '../../../../lib/route-dto';
 import { LocationResultCard } from './LocationResultCard';
 
 interface Location {
