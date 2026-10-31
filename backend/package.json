@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run src/server.ts",
-    "build": "bun build src/server.ts --target=bun --outdir dist",
+    "import:osm": "bun run src/scripts/import-osm-data.ts",
+    "build": "bun run src/scripts/ensure-osm-data.ts && bun build src/server.ts --target=bun --outdir dist",
     "start": "bun dist/server.js",
     "test": "bun test",
     "type-check": "tsc --noEmit"
