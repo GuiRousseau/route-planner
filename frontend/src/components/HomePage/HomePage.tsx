@@ -99,6 +99,7 @@ export function HomePage() {
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              label="Address or location"
               placeholder="Enter address or location..."
               data-testid="address-input"
               variant="outlined"
