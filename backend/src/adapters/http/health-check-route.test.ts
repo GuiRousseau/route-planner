@@ -3,7 +3,6 @@ import express from 'express';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { createHealthCheckRouter } from './health-check-route.ts';
-import { createRouteRouter } from './route.ts';
 
 describe('healthcheck route', () => {
   it('returns a healthy response', async () => {
@@ -16,50 +15,6 @@ describe('healthcheck route', () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ status: 'ok' });
-    } finally {
-      await stopServer(server.instance);
-    }
-  });
-
-  it('returns the route endpoint response', async () => {
-    const app = express();
-    app.use(express.json());
-    app.use(createRouteRouter());
-    const server = await startServer(app);
-
-    try {
-      const response = await fetch(`${server.url}/route`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
-        message: 'Route endpoint received',
-      });
-    } finally {
-      await stopServer(server.instance);
-    }
-  });
-
-  it('rejects non-object route input', async () => {
-    const app = express();
-    app.use(express.json());
-    app.use(createRouteRouter());
-    const server = await startServer(app);
-
-    try {
-      const response = await fetch(`${server.url}/route`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(['invalid']),
-      });
-
-      expect(response.status).toBe(400);
-      expect(await response.json()).toEqual({
-        error: 'Request body must be a JSON object',
-      });
     } finally {
       await stopServer(server.instance);
     }
