@@ -32,6 +32,7 @@ export function HomePage() {
 
     setLoading(true);
     setError(null);
+    setRouteError(null);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
