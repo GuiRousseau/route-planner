@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { createApp } from './create-app.ts';
@@ -53,6 +53,34 @@ describe('createApp', () => {
         error: 'OSM network has not been imported yet',
       });
     } finally {
+      await stopServer(server.instance);
+    }
+  });
+
+  it('logs repository errors and returns a generic map-data error', async () => {
+    const error = new Error('disk read failed');
+    const logError = spyOn(console, 'error').mockImplementation(() => {});
+    const repository: OsmNetworkRepository = {
+      save: async () => {},
+      load: async () => {
+        throw error;
+      },
+    };
+    const server = await startServer(repository);
+
+    try {
+      const response = await fetch(`${server.url}/map-data`);
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: 'Failed to load local OSM network',
+      });
+      expect(logError).toHaveBeenCalledWith(
+        'Failed to load local OSM network:',
+        error
+      );
+    } finally {
+      logError.mockRestore();
       await stopServer(server.instance);
     }
   });
