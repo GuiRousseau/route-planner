@@ -1,4 +1,10 @@
-import type { OsmCoordinate } from '../../domain/osm/osm-network.ts';
+import {
+  RouteNetworkNotAvailableError,
+  RouteNotFoundError,
+  type GeneratedRoute,
+  type RouteCoordinate,
+  type RouteGenerator,
+} from '../../application/ports/inbound/route-generator.ts';
 import {
   buildRouteGraph,
   findNearestNode,
@@ -6,37 +12,36 @@ import {
   pathLength,
   pathTo,
   shortestPaths,
-} from '../../domain/route/route-graph.ts';
-import type { OsmNetworkRepository } from '../ports/outbound/osm-network-repository.ts';
+  type RouteGraph,
+} from './osm-route-graph.ts';
+import type { OsmNetworkRepository } from '../../application/ports/outbound/osm-network-repository.ts';
+import type { OsmNetworkSnapshot } from '../../domain/osm/osm-network.ts';
 
 export const DEFAULT_TARGET_DISTANCE_METERS = 5000;
 const TURNAROUND_TOLERANCE = 0.1;
 const MAX_START_SNAP_METERS = 500;
 const REUSE_PENALTY = 5;
 
-export interface GeneratedRoute {
-  distanceMeters: number;
-  targetDistanceMeters: number;
-  waypoints: OsmCoordinate[];
-}
-
-export class OsmNetworkNotAvailableError extends Error {}
-export class RouteNotFoundError extends Error {}
-
-export class GenerateRoute {
-  constructor(
-    private readonly repository: OsmNetworkRepository,
-    private readonly random: () => number = Math.random
+export class OsmRouteGenerator implements RouteGenerator {
+  private constructor(
+    private readonly random: () => number,
+    private readonly graph: RouteGraph
   ) {}
 
+  static async create(
+    repository: OsmNetworkRepository,
+    random: () => number = Math.random
+  ): Promise<OsmRouteGenerator> {
+    const snapshot = await repository.load();
+    if (!snapshot) throw new RouteNetworkNotAvailableError('OSM network has not been imported yet');
+    return new OsmRouteGenerator(random, buildUsableGraph(snapshot));
+  }
+
   async execute(
-    startPoint: OsmCoordinate,
+    startPoint: RouteCoordinate,
     targetDistanceMeters = DEFAULT_TARGET_DISTANCE_METERS
   ): Promise<GeneratedRoute> {
-    const snapshot = await this.repository.load();
-    if (!snapshot) throw new OsmNetworkNotAvailableError('OSM network has not been imported yet');
-
-    const graph = buildRouteGraph(snapshot);
+    const graph = this.graph;
     const start = findNearestNode(graph, startPoint);
     if (start === null) throw new RouteNotFoundError('No runnable way found near the start point');
 
@@ -78,4 +83,12 @@ export class GenerateRoute {
       waypoints: fullPath.map((id) => graph.nodes.get(id)!),
     };
   }
+}
+
+function buildUsableGraph(snapshot: OsmNetworkSnapshot): RouteGraph {
+  const graph = buildRouteGraph(snapshot);
+  for (const edges of graph.edges.values()) {
+    if (edges.some((edge) => edge.length > 0)) return graph;
+  }
+  throw new RouteNetworkNotAvailableError('OSM network has no runnable edges');
 }

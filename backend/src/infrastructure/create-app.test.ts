@@ -19,7 +19,7 @@ describe('createApp', () => {
             { lat: 46.8, lon: -71.2 },
             { lat: 46.81, lon: -71.21 },
           ],
-          tags: { highway: 'residential', foot: 'no' },
+          tags: { highway: 'residential' },
         },
       ],
     };
@@ -40,11 +40,13 @@ describe('createApp', () => {
   });
 
   it('reports when the OSM network has not been imported', async () => {
+    let available = true;
     const repository: OsmNetworkRepository = {
       save: async () => {},
-      load: async () => null,
+      load: async () => available ? gridSnapshot() : null,
     };
     const server = await startServer(repository);
+    available = false;
 
     try {
       const response = await fetch(`${server.url}/map-data`);
@@ -56,6 +58,22 @@ describe('createApp', () => {
     } finally {
       await stopServer(server.instance);
     }
+  });
+
+  it('refuses to start without a network or with an unreadable network', async () => {
+    await expect(createApp({ save: async () => {}, load: async () => null }))
+      .rejects.toThrow('OSM network has not been imported yet');
+    await expect(createApp({
+      save: async () => {},
+      load: async () => { throw new Error('Invalid snapshot'); },
+    })).rejects.toThrow('Invalid snapshot');
+  });
+
+  it('refuses to start when the network has no usable edges', async () => {
+    const snapshot = gridSnapshot();
+    snapshot.ways.forEach((way) => (way.tags = { highway: 'motorway' }));
+    await expect(createApp({ save: async () => {}, load: async () => snapshot }))
+      .rejects.toThrow('OSM network has no runnable edges');
   });
 
   it('generates a round-trip route from the stored OSM network', async () => {
@@ -87,20 +105,53 @@ describe('createApp', () => {
     const server = await startServer();
 
     try {
-      const response = await fetch(`${server.url}/route`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
-      });
+      for (const body of [
+        {},
+        { startPoint: null },
+        { startPoint: { lat: '46.8', lon: -71.2 } },
+        { startPoint: { lat: 90.01, lon: 0 } },
+        { startPoint: { lat: 0, lon: -180.01 } },
+      ]) {
+        const response = await fetch(`${server.url}/route`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
-      expect(response.status).toBe(400);
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+          error: 'Request body must contain a startPoint with numeric lat and lon',
+        });
+      }
     } finally {
       await stopServer(server.instance);
     }
   });
 
-  it('reports when no OSM network is available for routing', async () => {
-    const server = await startServer({ save: async () => {}, load: async () => null });
+  it('accepts coordinates at the geographic boundaries', async () => {
+    const server = await startServer();
+
+    try {
+      for (const startPoint of [{ lat: 90, lon: 180 }, { lat: -90, lon: -180 }]) {
+        const response = await fetch(`${server.url}/route`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ startPoint }),
+        });
+        expect(response.status).toBe(422);
+      }
+    } finally {
+      await stopServer(server.instance);
+    }
+  });
+
+  it('uses the initialized routing graph without reloading the network', async () => {
+    let available = true;
+    const server = await startServer({
+      save: async () => {},
+      load: async () => available ? gridSnapshot() : null,
+    });
+    available = false;
 
     try {
       const response = await fetch(`${server.url}/route`, {
@@ -109,7 +160,7 @@ describe('createApp', () => {
         body: JSON.stringify({ startPoint: { lat: 46.8, lon: -71.2 } }),
       });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
     } finally {
       await stopServer(server.instance);
     }
@@ -119,7 +170,10 @@ describe('createApp', () => {
 async function startServer(
   repository?: OsmNetworkRepository
 ): Promise<{ instance: Server; url: string }> {
-  const instance = createApp(repository).listen(0);
+  const instance = (await createApp(repository ?? {
+    save: async () => {},
+    load: async () => gridSnapshot(),
+  })).listen(0);
   await new Promise<void>((resolve) => instance.once('listening', resolve));
   const address = instance.address() as AddressInfo;
 

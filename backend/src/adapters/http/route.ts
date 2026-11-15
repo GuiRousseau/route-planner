@@ -1,16 +1,25 @@
 import { Router, type Request, type Response } from 'express';
+import { z } from 'zod';
+import type { RouteRequest } from '../../../../lib/route-dto.ts';
 import {
-  GenerateRoute,
-  OsmNetworkNotAvailableError,
+  type RouteGenerator,
+  RouteNetworkNotAvailableError,
   RouteNotFoundError,
-} from '../../application/use-cases/generate-route.ts';
+} from '../../application/ports/inbound/route-generator.ts';
 
-export function createRouteRouter(generateRoute: GenerateRoute): Router {
+const routeRequestSchema: z.ZodType<RouteRequest> = z.object({
+  startPoint: z.object({
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+  }),
+});
+
+export function createRouteRouter(generateRoute: RouteGenerator): Router {
   const router = Router();
 
   router.post('/route', async (request: Request, response: Response) => {
-    const startPoint = parseStartPoint(request.body);
-    if (!startPoint) {
+    const parsed = routeRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
       response.status(400).json({
         error: 'Request body must contain a startPoint with numeric lat and lon',
       });
@@ -18,9 +27,9 @@ export function createRouteRouter(generateRoute: GenerateRoute): Router {
     }
 
     try {
-      response.status(200).json(await generateRoute.execute(startPoint));
+      response.status(200).json(await generateRoute.execute(parsed.data.startPoint));
     } catch (error) {
-      if (error instanceof OsmNetworkNotAvailableError) {
+      if (error instanceof RouteNetworkNotAvailableError) {
         response.status(404).json({ error: error.message });
       } else if (error instanceof RouteNotFoundError) {
         response.status(422).json({ error: error.message });
@@ -31,16 +40,4 @@ export function createRouteRouter(generateRoute: GenerateRoute): Router {
   });
 
   return router;
-}
-
-function parseStartPoint(body: unknown): { lat: number; lon: number } | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const startPoint = (body as Record<string, unknown>).startPoint;
-  if (typeof startPoint !== 'object' || startPoint === null) return null;
-
-  const { lat, lon } = startPoint as Record<string, unknown>;
-  if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-  return { lat, lon };
 }
