@@ -142,9 +142,19 @@ export function HomePage() {
             {routeError}
           </Alert>
         )}
+        <Box component="footer" sx={{ mt: 3, typography: 'caption' }}>
+          Map data ©{' '}
+          <a href="https://www.openstreetmap.org/copyright">
+            OpenStreetMap contributors
+          </a>
+          . Data available under the{' '}
+          <a href="https://opendatacommons.org/licenses/odbl/">
+            Open Database License (ODbL)
+          </a>
+          .
+        </Box>
       </Box>
     </Container>
   );
 }
-
 

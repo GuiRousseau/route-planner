@@ -13,8 +13,15 @@ describe('HomePage', () => {
 
   it('renders the home page with input and search button', () => {
     render(<HomePage />);
+
     expect(screen.getByTestId('address-input')).toBeInTheDocument();
     expect(screen.getByTestId('search-button')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'OpenStreetMap contributors' })
+    ).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
+    expect(
+      screen.getByRole('link', { name: 'Open Database License (ODbL)' })
+    ).toHaveAttribute('href', 'https://opendatacommons.org/licenses/odbl/');
   });
 
   it('updates input value when user types', async () => {
