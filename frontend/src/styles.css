@@ -16,3 +16,8 @@ body {
 * {
   box-sizing: border-box;
 }
+
+.route-map {
+  height: 400px;
+  width: 100%;
+}

@@ -2,13 +2,33 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HomePage } from './HomePage';
 
+jest.mock('leaflet', () => {
+  const routeMap = { fitBounds: jest.fn(), remove: jest.fn() };
+  const layer = { addTo: jest.fn().mockReturnThis(), getBounds: jest.fn() };
+  return {
+    map: jest.fn(() => routeMap),
+    tileLayer: jest.fn(() => layer),
+    polyline: jest.fn(() => layer),
+  };
+});
+
+const routeResponse = {
+  distanceMeters: 4950,
+  targetDistanceMeters: 5000,
+  waypoints: [
+    { lat: 40.7128, lon: -74.006 },
+    { lat: 40.72, lon: -74.01 },
+    { lat: 40.7128, lon: -74.006 },
+  ],
+};
+
 describe('HomePage', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('renders the home page with input and search button', () => {
@@ -91,8 +111,6 @@ describe('HomePage', () => {
         display_name: 'New York, United States',
       },
     ];
-    const mockRouteResponse = { route: 'route-data' };
-
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         json: async () => mockLocationResponse,
@@ -100,7 +118,7 @@ describe('HomePage', () => {
       .mockResolvedValueOnce({
         ok: true,
         statusText: 'OK',
-        json: async () => mockRouteResponse,
+        json: async () => routeResponse,
       });
 
     const user = userEvent.setup();
@@ -133,6 +151,106 @@ describe('HomePage', () => {
         })
       );
     });
+    expect(await screen.findByRole('region', { name: 'Planned route map' })).toBeInTheDocument();
+    expect(screen.getByText('Distance: 4.95 km')).toBeInTheDocument();
+    expect(screen.queryByTestId('location-result')).not.toBeInTheDocument();
+  });
+
+  it('clears the displayed route when searching for a new location', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => [{ lat: '40.7128', lon: '-74.006', display_name: 'New York' }],
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => routeResponse })
+      .mockResolvedValueOnce({
+        json: async () => [{ lat: '46.8', lon: '-71.2', display_name: 'Quebec' }],
+      });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    const input = screen.getByRole('textbox', { name: 'Address or location' });
+    await user.type(input, 'New York');
+    await user.click(screen.getByRole('button', { name: 'Search Location' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate Running Route' }));
+    expect(await screen.findByTestId('route-result')).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, 'Quebec');
+    await user.click(screen.getByRole('button', { name: 'Search Location' }));
+    expect(await screen.findByText('Quebec')).toBeInTheDocument();
+    expect(screen.queryByTestId('route-result')).not.toBeInTheDocument();
+  });
+
+  it('regenerates a route from the same location and displays the new result', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => [{ lat: '40.7128', lon: '-74.006', display_name: 'New York' }],
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => routeResponse })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...routeResponse, distanceMeters: 5100 }),
+      });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    await user.type(screen.getByRole('textbox', { name: 'Address or location' }), 'New York');
+    await user.click(screen.getByRole('button', { name: 'Search Location' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate Running Route' }));
+    await user.click(await screen.findByRole('button', { name: 'Regenerate Route' }));
+
+    expect(await screen.findByText('Distance: 5.10 km')).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      '/api/route',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ startPoint: { lat: 40.7128, lon: -74.006 } }),
+      })
+    );
+  });
+
+  it('keeps the previous route and allows retry when regeneration fails', async () => {
+    let rejectRoute: (error: Error) => void = () => {};
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => [{ lat: '40.7128', lon: '-74.006', display_name: 'New York' }],
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => routeResponse })
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectRoute = reject;
+      }));
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    await user.type(screen.getByRole('textbox', { name: 'Address or location' }), 'New York');
+    await user.click(screen.getByRole('button', { name: 'Search Location' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate Running Route' }));
+    await user.click(await screen.findByRole('button', { name: 'Regenerate Route' }));
+
+    expect(screen.getByRole('button', { name: 'Generating Route...' })).toBeDisabled();
+    expect(screen.getByText('Distance: 4.95 km')).toBeInTheDocument();
+    rejectRoute(new Error('Network error'));
+    expect(await screen.findByText('Network error')).toBeInTheDocument();
+    expect(screen.getByText('Distance: 4.95 km')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Regenerate Route' })).toBeEnabled();
+  });
+
+  it('shows an error and keeps the location when the route has no waypoints', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        json: async () => [{ lat: '40.7128', lon: '-74.006', display_name: 'New York' }],
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...routeResponse, waypoints: [] }) });
+
+    const user = userEvent.setup();
+    render(<HomePage />);
+    await user.type(screen.getByRole('textbox', { name: 'Address or location' }), 'New York');
+    await user.click(screen.getByRole('button', { name: 'Search Location' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate Running Route' }));
+
+    expect(await screen.findByText('Invalid route returned by the server')).toBeInTheDocument();
+    expect(screen.getByTestId('location-result')).toBeInTheDocument();
+    expect(screen.queryByTestId('route-result')).not.toBeInTheDocument();
   });
 
   it('displays error when route generation fails', async () => {

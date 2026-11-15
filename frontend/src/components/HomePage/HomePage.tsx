@@ -9,8 +9,9 @@ import {
   Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import type { RouteRequest } from '../../../../lib/route-dto';
+import type { RouteRequest, RouteResponse } from '../../../../lib/route-dto';
 import { LocationResultCard } from './LocationResultCard';
+import { RouteResultCard } from './RouteResultCard';
 
 interface Location {
   lat: number;
@@ -21,6 +22,7 @@ interface Location {
 export function HomePage() {
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<Location | null>(null);
+  const [route, setRoute] = useState<RouteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [generatingRoute, setGeneratingRoute] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +30,11 @@ export function HomePage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim()) return;
+    if (!address.trim() || generatingRoute) return;
 
     setLoading(true);
+    setRoute(null);
+    setLocation(null);
     setError(null);
     setRouteError(null);
     try {
@@ -57,7 +61,7 @@ export function HomePage() {
   };
 
   const handleGenerateRoute = async () => {
-    if (!location) return;
+    if (!location || loading || generatingRoute) return;
 
     setGeneratingRoute(true);
     setRouteError(null);
@@ -81,8 +85,23 @@ export function HomePage() {
         throw new Error(`API error: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log('Route generated:', result);
+      const result: RouteResponse = await response.json();
+      if (
+        !Number.isFinite(result.distanceMeters) ||
+        !Array.isArray(result.waypoints) ||
+        result.waypoints.length < 2 ||
+        !result.waypoints.every(
+          (point) =>
+            point &&
+            Number.isFinite(point.lat) &&
+            Number.isFinite(point.lon) &&
+            Math.abs(point.lat) <= 90 &&
+            Math.abs(point.lon) <= 180
+        )
+      ) {
+        throw new Error('Invalid route returned by the server');
+      }
+      setRoute(result);
     } catch (err) {
       setRouteError(err instanceof Error ? err.message : 'Failed to generate route');
     } finally {
@@ -104,7 +123,7 @@ export function HomePage() {
               placeholder="Enter address or location..."
               data-testid="address-input"
               variant="outlined"
-              disabled={loading}
+              disabled={loading || generatingRoute}
             />
             <Button
               fullWidth
@@ -112,7 +131,7 @@ export function HomePage() {
               variant="contained"
               color="primary"
               size="large"
-              disabled={loading}
+              disabled={loading || generatingRoute}
               data-testid="search-button"
               startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
             >
@@ -127,7 +146,13 @@ export function HomePage() {
           </Alert>
         )}
 
-        {location && (
+        {route ? (
+          <RouteResultCard
+            route={route}
+            onRegenerateRoute={handleGenerateRoute}
+            loading={generatingRoute}
+          />
+        ) : location && (
           <LocationResultCard
             lat={location.lat}
             lon={location.lon}

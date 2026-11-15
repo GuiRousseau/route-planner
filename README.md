@@ -72,6 +72,8 @@ The server loads the snapshot and builds the routing graph before listening. Sta
 
 `POST /route` targets a 5 km round trip and returns routes within 10% of that distance. It prefers a different return path when that fits the distance limit, otherwise it may retrace the outbound path. If it cannot generate a route within the limit, it returns `422`.
 
+Search for a location in the frontend and select **Generate Running Route** to view the generated route and distance on an OpenStreetMap map. Select **Regenerate Route** to request another route from the same location; the generator may return the same route. The frontend's Vite development server and preview proxy `/api` requests to the backend on port 3000.
+
 The refresh command uses a bounding box covering the Quebec City region and writes `backend/data/osm/quebec-city.json` when run from the backend working directory. Configure `OSM_BBOX` as `south,west,north,east`, `MAP_DATA_FILE` as an absolute path or a path relative to the process working directory, and `OSM_OVERPASS_ENDPOINT` to use a different extraction area, storage location, or Overpass-compatible endpoint. The import is not run on server startup.
 
 The snapshot retains every OSM way tagged `highway` in the selected area except motorways and unusable ways (`motorway`, `motorway_link`, `construction`, `proposed`, `raceway`)—paths and trails, sidewalk-tagged roads, `trunk` roads (some are walkable; routing should check their `foot` tag), and roads with no pedestrian-access tags—along with its OSM ID, ordered node IDs, coordinates, and all tags (including `foot`, `access`, `sidewalk`, and `surface`). The importer does not otherwise filter by assumed pedestrian suitability: later routing policy can prefer paths and sidewalks, exclude explicit restrictions, and decide how to treat unknown access. The generated `backend/data/` folder is gitignored. Backend code can read the stored snapshot through the `OsmNetworkRepository` port; `GET /map-data` provides the same snapshot over HTTP after import. A missing snapshot returns `404`. The repository currently uses atomic local JSON-file replacement, and can be replaced without changing the use cases.
@@ -81,4 +83,4 @@ The default bounding box is an approximate regional rectangle, not a municipal b
 ## Notes
 
 - The backend port is fixed at `3000` (`backend/src/server.ts`); no environment variables are required.
-- The frontend doesn't call the API yet; when it does, add a Vite proxy or use the full backend URL.
+- For production hosting, configure the web server to proxy `/api` to the backend, removing the `/api` prefix.
