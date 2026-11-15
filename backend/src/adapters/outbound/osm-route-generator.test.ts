@@ -18,8 +18,8 @@ describe('OsmRouteGenerator', () => {
     const generator = await OsmRouteGenerator.create(repositoryOf(gridSnapshot()), () => 0.5);
     const route = await generator.execute(start);
 
-    expect(route.distanceMeters).toBeGreaterThan(4000);
-    expect(route.distanceMeters).toBeLessThan(6000);
+    expect(route.distanceMeters).toBeGreaterThanOrEqual(4500);
+    expect(route.distanceMeters).toBeLessThanOrEqual(5500);
     expect(route.waypoints[0]).toEqual(route.waypoints.at(-1));
     expect(route.waypoints.length).toBeGreaterThan(10);
   });
@@ -31,6 +31,44 @@ describe('OsmRouteGenerator', () => {
     const unique = new Set(keys);
 
     expect(unique.size).toBeGreaterThan(keys.length * 0.6);
+    expect(route.distanceMeters).toBeGreaterThanOrEqual(4500);
+    expect(route.distanceMeters).toBeLessThanOrEqual(5500);
+  });
+
+  it('retraces the outbound path when the preferred alternative exceeds the distance limit', async () => {
+    const snapshot = loopSnapshot([
+      { lat: 0.04, lon: 0 },
+      { lat: 0.04, lon: 0.0225 },
+    ]);
+    const generator = await OsmRouteGenerator.create(repositoryOf(snapshot), () => 0);
+    const route = await generator.execute({ lat: 0, lon: 0 });
+
+    expect(route.waypoints).toEqual([
+      { lat: 0, lon: 0 },
+      { lat: 0, lon: 0.0225 },
+      { lat: 0, lon: 0 },
+    ]);
+    expect(route.distanceMeters).toBe(5004);
+  });
+
+  it('prefers an alternative return path when it stays within the distance limit', async () => {
+    const via = { lat: 0.004, lon: 0.01125 };
+    const generator = await OsmRouteGenerator.create(repositoryOf(loopSnapshot([via])), () => 0);
+    const route = await generator.execute({ lat: 0, lon: 0 });
+
+    expect(route.waypoints).toEqual([
+      { lat: 0, lon: 0 },
+      { lat: 0, lon: 0.0225 },
+      via,
+      { lat: 0, lon: 0 },
+    ]);
+    expect(route.distanceMeters).toBeGreaterThanOrEqual(4500);
+    expect(route.distanceMeters).toBeLessThanOrEqual(5500);
+  });
+
+  it('reports when no turnaround can produce the target distance', async () => {
+    const generator = await OsmRouteGenerator.create(repositoryOf(gridSnapshot(5)));
+    await expect(generator.execute(start)).rejects.toBeInstanceOf(RouteNotFoundError);
   });
 
   it('ignores ways that are not runnable', async () => {
@@ -41,6 +79,25 @@ describe('OsmRouteGenerator', () => {
       RouteNetworkNotAvailableError
     );
   });
+
+  function loopSnapshot(via: Array<{ lat: number; lon: number }>): OsmNetworkSnapshot {
+    const start = { lat: 0, lon: 0 };
+    const turnaround = { lat: 0, lon: 0.0225 };
+    return {
+      sourceTimestamp: '2026-10-30T12:00:00Z',
+      importedAt: '2026-10-31T12:00:00Z',
+      bounds: { south: -1, west: -1, north: 1, east: 1 },
+      ways: [
+        { id: 1, nodes: [1, 2], geometry: [start, turnaround], tags: { highway: 'residential' } },
+        {
+          id: 2,
+          nodes: [1, ...via.map((_, index) => index + 3), 2],
+          geometry: [start, ...via, turnaround],
+          tags: { highway: 'residential' },
+        },
+      ],
+    };
+  }
 
   it('fails when the start point is far from any way', async () => {
     const generator = await OsmRouteGenerator.create(repositoryOf(gridSnapshot()));

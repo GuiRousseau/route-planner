@@ -93,9 +93,31 @@ describe('createApp', () => {
 
       expect(response.status).toBe(200);
       expect(body.targetDistanceMeters).toBe(5000);
-      expect(body.distanceMeters).toBeGreaterThan(4000);
-      expect(body.distanceMeters).toBeLessThan(6000);
+      expect(body.distanceMeters).toBeGreaterThanOrEqual(4500);
+      expect(body.distanceMeters).toBeLessThanOrEqual(5500);
       expect(body.waypoints[0]).toEqual(body.waypoints.at(-1));
+    } finally {
+      await stopServer(server.instance);
+    }
+  });
+
+  it('returns 422 when it cannot generate a route within the target distance', async () => {
+    const server = await startServer({
+      save: async () => {},
+      load: async () => gridSnapshot(5),
+    });
+
+    try {
+      const response = await fetch(`${server.url}/route`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ startPoint: { lat: 46.8, lon: -71.2 } }),
+      });
+
+      expect(response.status).toBe(422);
+      expect(await response.json()).toEqual({
+        error: 'Could not generate a route within the target distance',
+      });
     } finally {
       await stopServer(server.instance);
     }

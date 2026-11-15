@@ -2,8 +2,8 @@ import type { OsmNetworkSnapshot } from '../../domain/osm/osm-network.ts';
 
 const STEP = 0.0009; // roughly 100 m
 
-// 25x25 street grid around lat 46.8 / lon -71.2 (node id = row * 100 + col).
-export function gridSnapshot(size = 25): OsmNetworkSnapshot {
+// Street grid around lat 46.8 / lon -71.2 (node id = row * 100 + col).
+export function gridSnapshot(size = 35): OsmNetworkSnapshot {
   const origin = { lat: 46.8 - (STEP * (size - 1)) / 2, lon: -71.2 - (STEP * (size - 1)) / 2 };
   const point = (row: number, col: number) => ({
     lat: origin.lat + row * STEP,

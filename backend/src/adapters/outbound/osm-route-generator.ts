@@ -18,7 +18,7 @@ import type { OsmNetworkRepository } from '../../application/ports/outbound/osm-
 import type { OsmNetworkSnapshot } from '../../domain/osm/osm-network.ts';
 
 export const DEFAULT_TARGET_DISTANCE_METERS = 5000;
-const TURNAROUND_TOLERANCE = 0.1;
+const DISTANCE_TOLERANCE = 0.1;
 const MAX_START_SNAP_METERS = 500;
 const REUSE_PENALTY = 5;
 
@@ -51,13 +51,13 @@ export class OsmRouteGenerator implements RouteGenerator {
     }
 
     const half = targetDistanceMeters / 2;
-    const outbound = shortestPaths(graph, start, undefined, half * (1 + TURNAROUND_TOLERANCE * 2));
+    const outbound = shortestPaths(graph, start, undefined, half * (1 + DISTANCE_TOLERANCE * 2));
 
     const candidates = [...outbound.distances].filter(([id]) => id !== start);
     if (candidates.length === 0) throw new RouteNotFoundError('Start point is not connected to any runnable way');
 
     const band = candidates.filter(
-      ([, distance]) => Math.abs(distance - half) <= half * TURNAROUND_TOLERANCE
+      ([, distance]) => Math.abs(distance - half) <= half * DISTANCE_TOLERANCE
     );
     const pool = band.length > 0 ? band : [candidates.reduce((a, b) => (b[1] > a[1] ? b : a))];
     const [turnaround] = pool[Math.floor(this.random() * pool.length)];
@@ -74,11 +74,23 @@ export class OsmRouteGenerator implements RouteGenerator {
       outEdges.has(`${edge.from}-${edge.to}`) ? edge.length * REUSE_PENALTY : edge.length
     );
     if (!back.distances.has(start)) throw new RouteNotFoundError('Could not find a way back to the start point');
-    const backPath = pathTo(back, start);
+    let backPath = pathTo(back, start);
+    let fullPath = [...outPath, ...backPath.slice(1)];
+    let distance = pathLength(graph, fullPath);
 
-    const fullPath = [...outPath, ...backPath.slice(1)];
+    const minDistance = targetDistanceMeters * (1 - DISTANCE_TOLERANCE);
+    const maxDistance = targetDistanceMeters * (1 + DISTANCE_TOLERANCE);
+    if (distance < minDistance || distance > maxDistance) {
+      backPath = [...outPath].reverse();
+      fullPath = [...outPath, ...backPath.slice(1)];
+      distance = pathLength(graph, fullPath);
+      if (distance < minDistance || distance > maxDistance) {
+        throw new RouteNotFoundError('Could not generate a route within the target distance');
+      }
+    }
+
     return {
-      distanceMeters: Math.round(pathLength(graph, fullPath)),
+      distanceMeters: Math.round(distance),
       targetDistanceMeters,
       waypoints: fullPath.map((id) => graph.nodes.get(id)!),
     };
