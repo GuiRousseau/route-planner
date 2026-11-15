@@ -8,8 +8,9 @@ export interface RouteRequest {
 }
 
 export interface RouteResponse {
-  route: string;
-  waypoints?: Array<{
+  distanceMeters: number;
+  targetDistanceMeters: number;
+  waypoints: Array<{
     lat: number;
     lon: number;
   }>;
