@@ -36,4 +36,27 @@ describe('loadOsmConfig', () => {
       'OSM_BBOX must describe valid south,west,north,east bounds'
     );
   });
+
+  it('rejects blank bounds fields instead of treating them as zero', () => {
+    expect(() => loadOsmConfig({ OSM_BBOX: ', -71, 47, -70' })).toThrow(
+      'OSM_BBOX must be south,west,north,east'
+    );
+    expect(() => loadOsmConfig({ OSM_BBOX: '46, ,47,-70' })).toThrow(
+      'OSM_BBOX must be south,west,north,east'
+    );
+  });
+
+  it('rejects coordinates outside the latitude and longitude ranges', () => {
+    for (const OSM_BBOX of [
+      '-91,-71,47,-70',
+      '46,-71,-91,-70',
+      '46,-71,91,-70',
+      '46,-181,47,-70',
+      '46,-71,47,181',
+    ]) {
+      expect(() => loadOsmConfig({ OSM_BBOX })).toThrow(
+        'OSM_BBOX must describe valid south,west,north,east bounds'
+      );
+    }
+  });
 });

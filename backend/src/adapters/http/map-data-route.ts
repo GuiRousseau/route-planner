@@ -15,7 +15,8 @@ export function createMapDataRouter(getOsmNetwork: GetOsmNetwork): Router {
       }
 
       response.status(200).json(snapshot);
-    } catch {
+    } catch (error) {
+      console.error('Failed to load local OSM network:', error);
       response.status(500).json({ error: 'Failed to load local OSM network' });
     }
   });

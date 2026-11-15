@@ -41,8 +41,15 @@ export function loadOsmConfig(
 }
 
 function parseBounds(value: string): OsmBounds {
-  const values = value.split(',').map(Number);
-  if (values.length !== 4 || !values.every(Number.isFinite)) {
+  const coordinates = value.split(',').map((coordinate) => coordinate.trim());
+  if (
+    coordinates.length !== 4 ||
+    coordinates.some((coordinate) => coordinate.length === 0)
+  ) {
+    throw new Error('OSM_BBOX must be south,west,north,east');
+  }
+  const values = coordinates.map(Number);
+  if (!values.every(Number.isFinite)) {
     throw new Error('OSM_BBOX must be south,west,north,east');
   }
 
@@ -53,8 +60,12 @@ function parseBounds(value: string): OsmBounds {
     north === undefined ||
     east === undefined ||
     south < -90 ||
+    south > 90 ||
+    north < -90 ||
     north > 90 ||
     west < -180 ||
+    west > 180 ||
+    east < -180 ||
     east > 180 ||
     south >= north ||
     west >= east
